@@ -1,6 +1,35 @@
 # Douglas Ross's Aliases
 # Loaded from .bashrc
 
+# ===== Claude Code =====
+alias claude-skip='claude --dangerously-skip-permissions'
+
+# Persist Claude credentials across Codespace rebuilds
+claude-persist() {
+    CLAUDE_PERSIST_DIR="/workspaces/.codespaces/.persistedshare/.claude"
+    CLAUDE_HOME_DIR="$HOME/.claude"
+    mkdir -p "$CLAUDE_PERSIST_DIR"
+    cp -r "$CLAUDE_HOME_DIR"/* "$CLAUDE_PERSIST_DIR"/ 2>/dev/null || true
+    rm -rf "$CLAUDE_HOME_DIR"
+    ln -sf "$CLAUDE_PERSIST_DIR" "$CLAUDE_HOME_DIR"
+    if [ -f "$HOME/.claude.json" ]; then
+        cp "$HOME/.claude.json" "/workspaces/.codespaces/.persistedshare/.claude.json"
+        ln -sf "/workspaces/.codespaces/.persistedshare/.claude.json" "$HOME/.claude.json"
+    fi
+    echo "✅ Claude credentials persisted"
+}
+
+# Persist gh credentials across Codespace rebuilds
+gh-persist() {
+    GH_PERSIST_DIR="/workspaces/.codespaces/.persistedshare/.config/gh"
+    GH_HOME_DIR="$HOME/.config/gh"
+    mkdir -p "$GH_PERSIST_DIR"
+    cp -r "$GH_HOME_DIR"/* "$GH_PERSIST_DIR"/ 2>/dev/null || true
+    rm -rf "$GH_HOME_DIR"
+    ln -sf "$GH_PERSIST_DIR" "$GH_HOME_DIR"
+    echo "✅ gh credentials persisted"
+}
+
 # ===== Navigation =====
 alias ..='cd ..'
 alias ...='cd ../..'
