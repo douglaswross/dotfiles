@@ -74,43 +74,44 @@ if [ -d "$CLAUDE_PERSIST_DIR" ]; then
     echo "  ✅ Claude credentials restored"
 fi
 
-# ===== Install specgofer extension =====
-echo "📦 Installing specgofer extension..."
+# ===== Install gofer extension =====
+echo "📦 Installing gofer extension..."
 
-REPO="eai-tools/specgofer"
-VSIX_DIR="/tmp"
-PERSISTED_VSIX_DIR="/workspaces/.codespaces/.persistedshare/extensions"
+GOFER_RELEASES_URL="https://eai-tools.github.io/gofer/releases.json"
+GOFER_BASE_URL="https://eai-tools.github.io/gofer/releases"
+GOFER_VSIX_DIR="/tmp"
+GOFER_PERSISTED_DIR="/workspaces/.codespaces/.persistedshare/extensions"
 
 # Check for persisted vsix first
-PERSISTED_VSIX=$(ls -t "$PERSISTED_VSIX_DIR"/specgofer*.vsix 2>/dev/null | head -1)
-if [ -n "$PERSISTED_VSIX" ] && [ -f "$PERSISTED_VSIX" ]; then
+GOFER_PERSISTED_VSIX=$(ls -t "$GOFER_PERSISTED_DIR"/gofer-*.vsix 2>/dev/null | head -1)
+if [ -n "$GOFER_PERSISTED_VSIX" ] && [ -f "$GOFER_PERSISTED_VSIX" ]; then
     echo "  🔧 Installing from persisted extension..."
-    code --install-extension "$PERSISTED_VSIX" --force 2>/dev/null || true
-    echo "  ✅ specgofer installed from cache"
+    code --install-extension "$GOFER_PERSISTED_VSIX" --force 2>/dev/null || true
+    echo "  ✅ gofer installed from cache"
 else
-    # Try downloading
-    download_vsix() {
-        if [ -n "$SPECGOFER_TOKEN" ]; then
-            GH_TOKEN="$SPECGOFER_TOKEN" gh release download --repo "$REPO" --pattern "*.vsix" --dir "$VSIX_DIR" --clobber 2>/dev/null && return 0
-        fi
-        if command -v gh &> /dev/null; then
-            gh release download --repo "$REPO" --pattern "*.vsix" --dir "$VSIX_DIR" --clobber 2>/dev/null && return 0
-            (unset GITHUB_TOKEN; gh release download --repo "$REPO" --pattern "*.vsix" --dir "$VSIX_DIR" --clobber 2>/dev/null) && return 0
-        fi
-        return 1
-    }
+    # Get latest version from releases.json and download
+    GOFER_LATEST=$(curl -sL "$GOFER_RELEASES_URL" | grep -o '"tag_name":"[^"]*"' | head -1 | sed 's/"tag_name":"v\?\([^"]*\)"/\1/')
+    if [ -z "$GOFER_LATEST" ]; then
+        # Fallback: try to extract version differently
+        GOFER_LATEST=$(curl -sL "$GOFER_RELEASES_URL" | python3 -c "import sys,json; releases=json.load(sys.stdin); print(releases[0]['tag_name'].lstrip('v') if releases else '')" 2>/dev/null)
+    fi
 
-    if download_vsix; then
-        VSIX_FILE=$(ls -t "$VSIX_DIR"/specgofer*.vsix 2>/dev/null | head -1)
-        if [ -n "$VSIX_FILE" ] && [ -f "$VSIX_FILE" ]; then
-            code --install-extension "$VSIX_FILE" --force 2>/dev/null || true
+    if [ -n "$GOFER_LATEST" ]; then
+        GOFER_VSIX_NAME="gofer-${GOFER_LATEST}.vsix"
+        GOFER_DOWNLOAD_URL="${GOFER_BASE_URL}/${GOFER_VSIX_NAME}"
+
+        echo "  📥 Downloading gofer v${GOFER_LATEST}..."
+        if curl -sL -o "${GOFER_VSIX_DIR}/${GOFER_VSIX_NAME}" "$GOFER_DOWNLOAD_URL"; then
+            code --install-extension "${GOFER_VSIX_DIR}/${GOFER_VSIX_NAME}" --force 2>/dev/null || true
             # Persist for future rebuilds
-            mkdir -p "$PERSISTED_VSIX_DIR"
-            cp "$VSIX_FILE" "$PERSISTED_VSIX_DIR/" 2>/dev/null || true
-            echo "  ✅ specgofer installed and cached"
+            mkdir -p "$GOFER_PERSISTED_DIR"
+            cp "${GOFER_VSIX_DIR}/${GOFER_VSIX_NAME}" "$GOFER_PERSISTED_DIR/" 2>/dev/null || true
+            echo "  ✅ gofer v${GOFER_LATEST} installed and cached"
+        else
+            echo "  ⚠️  Failed to download gofer extension"
         fi
     else
-        echo "  ⚠️  specgofer: Set SPECGOFER_TOKEN secret or run 'gh auth login'"
+        echo "  ⚠️  Could not determine latest gofer version"
     fi
 fi
 
